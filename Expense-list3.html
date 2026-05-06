@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ExpenseFlow — Smart Budget Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1a2e;
+      --cream: #f5f0e8;
+      --gold: #c9a84c;
+      --gold-light: #f0d98a;
+      --red: #c0392b;
+      --green: #1e8449;
+      --card-bg: #fffdf7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse at top left, #e8dfc8 0%, transparent 60%),
+        radial-gradient(ellipse at bottom right, #ddd5be 0%, transparent 60%);
+    }
+
+    h1, h2, h3, .display {
+      font-family: 'Playfair Display', serif;
+    }
+
+    /* Paper texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container { position: relative; z-index: 1; }
+
+    /* Header */
+    .header-bar {
+      background: var(--ink);
+      color: var(--cream);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .header-bar h1 {
+      font-size: 1.8rem;
+      letter-spacing: -0.5px;
+      color: var(--gold-light);
+    }
+
+    .header-badge {
+      background: var(--gold);
+      color: var(--ink);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .date-display {
+      font-size: 0.8rem;
+      color: #9a8f7e;
+      margin-top: 0.15rem;
+    }
+
+    /* Summary Cards */
+    .summary-card {
+      background: white;
+      border: 1px solid #e0d9cc;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      box-shadow: 0 2px 8px rgba(26,26,46,0.06);
+      transition: transform 0.2s;
+    }
+
+    .summary-card:hover { transform: translateY(-2px); }
+    .summary-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9a8f7e; font-weight: 500; }
+    .summary-card .value { font-size: 1.7rem; font-weight: 700; font-family: 'Playfair Display', serif; }
+    .summary-card.total .value { color: var(--ink); }
+    .summary-card.income .value { color: var(--green); }
+    .summary-card.spent .value { color: var(--red); }
+
+    /* Input Panel */
+    .input-panel {
+      background: white;
+      border: 1px solid #e0d9cc;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 4px 20px rgba(26,26,46,0.08);
+    }
+
+    .input-panel h2 {
+      font-size: 1.3rem;
+      margin-bottom: 1.25rem;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .input-panel h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, #c9a84c44, transparent);
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b6358;
+      margin-bottom: 0.4rem;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      background: #faf8f3;
+      border: 1.5px solid #ddd5c4;
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      color: var(--ink);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.15);
+    }
+
+    .btn-add {
+      background: var(--ink);
+      color: var(--gold-light);
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 1.5rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background 0.2s, transform 0.15s;
+      border: 2px solid transparent;
+    }
+
+    .btn-add:hover {
+      background: #2c2c50;
+      transform: translateY(-1px);
+    }
+
+    .btn-add:active { transform: translateY(0); }
+
+    /* Expense List */
+    .list-panel {
+      background: white;
+      border: 1px solid #e0d9cc;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(26,26,46,0.08);
+    }
+
+    .list-header {
+      padding: 1.25rem 1.75rem;
+      background: var(--ink);
+      color: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .list-header h2 {
+      font-size: 1.15rem;
+      color: var(--gold-light);
+    }
+
+    .list-header .count-badge {
+      background: rgba(201,168,76,0.2);
+      color: var(--gold-light);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.7rem;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .expense-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem 1.75rem;
+      border-bottom: 1px solid #f0ebe0;
+      transition: background 0.15s;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .expense-item:last-child { border-bottom: none; }
+    .expense-item:hover { background: #fdf9f1; }
+
+    .category-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .expense-name { font-weight: 600; font-size: 0.95rem; color: var(--ink); }
+    .expense-meta { font-size: 0.75rem; color: #9a8f7e; margin-top: 0.1rem; }
+
+    .expense-amount {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--red);
+      white-space: nowrap;
+    }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #c4b8a8;
+      font-size: 1rem;
+      padding: 0.3rem;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+      line-height: 1;
+    }
+
+    .btn-delete:hover { color: var(--red); background: #fdf0ee; }
+
+    /* Empty State */
+    .empty-state {
+      padding: 3.5rem 2rem;
+      text-align: center;
+      color: #b0a898;
+    }
+
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* Total Bar */
+    .total-bar {
+      background: var(--ink);
+      color: var(--cream);
+      padding: 1.25rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 3px solid var(--gold);
+    }
+
+    .total-bar .total-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #9a8f7e;
+    }
+
+    .total-bar .total-amount {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--gold-light);
+    }
+
+    /* Category colors */
+    .cat-food    { background: #fef3c7; color: #d97706; }
+    .cat-trans   { background: #dbeafe; color: #2563eb; }
+    .cat-shop    { background: #fce7f3; color: #db2777; }
+    .cat-health  { background: #dcfce7; color: #16a34a; }
+    .cat-entert  { background: #ede9fe; color: #7c3aed; }
+    .cat-bill    { background: #fee2e2; color: #dc2626; }
+    .cat-other   { background: #f3f4f6; color: #6b7280; }
+
+    /* Filter bar */
+    .filter-bar {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.85rem 1.75rem;
+      border-bottom: 1px solid #f0ebe0;
+      background: #fdfaf4;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      border: 1.5px solid #ddd5c4;
+      background: white;
+      color: #6b6358;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--gold-light);
+    }
+
+    /* Progress bar */
+    .budget-bar-wrap {
+      background: white;
+      border: 1px solid #e0d9cc;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 2px 8px rgba(26,26,46,0.06);
+    }
+
+    .budget-bar-wrap .label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #6b6358; margin-bottom: 0.6rem; }
+    .budget-bar-track { background: #f0ebe0; border-radius: 999px; height: 8px; overflow: hidden; }
+    .budget-bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; background: linear-gradient(to right, var(--gold), var(--red)); }
+    .budget-caption { font-size: 0.75rem; color: #9a8f7e; margin-top: 0.5rem; display: flex; justify-content: space-between; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--ink);
+      color: var(--gold-light);
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-left: 3px solid var(--gold);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Scrollable list */
+    .expense-list-scroll { max-height: 360px; overflow-y: auto; }
+    .expense-list-scroll::-webkit-scrollbar { width: 5px; }
+    .expense-list-scroll::-webkit-scrollbar-thumb { background: #ddd5c4; border-radius: 999px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header-bar">
+  <div>
+    <h1>💸 ExpenseFlow</h1>
+    <div class="date-display" id="currentDate"></div>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="header-badge">v1.0</span>
+    <span style="color:#9a8f7e;font-size:0.85rem;">Smart Budget Tracker</span>
+  </div>
+</div>
+
+<div class="container max-w-5xl mx-auto px-4 py-8 space-y-6">
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="summary-card total">
+      <span class="label">Total Spent</span>
+      <span class="value" id="summaryTotal">PKR 0</span>
+    </div>
+    <div class="summary-card">
+      <span class="label">Entries</span>
+      <span class="value" id="summaryCount" style="color:#2c2c50;">0</span>
+    </div>
+    <div class="summary-card income">
+      <span class="label">Avg / Entry</span>
+      <span class="value" id="summaryAvg">PKR 0</span>
+    </div>
+    <div class="summary-card spent">
+      <span class="label">Highest</span>
+      <span class="value" id="summaryHighest">PKR 0</span>
+    </div>
+  </div>
+
+  <!-- Budget Progress -->
+  <div class="budget-bar-wrap">
+    <div class="label">Monthly Budget Usage</div>
+    <div class="budget-bar-track">
+      <div class="budget-bar-fill" id="budgetFill" style="width:0%"></div>
+    </div>
+    <div class="budget-caption">
+      <span id="budgetUsed">PKR 0 used</span>
+      <span id="budgetLimit">Budget: PKR 50,000</span>
+    </div>
+  </div>
+
+  <!-- Two Column: Input + List -->
+  <div class="grid md:grid-cols-5 gap-6">
+
+    <!-- Input Panel (2 cols) -->
+    <div class="md:col-span-2 space-y-5">
+      <div class="input-panel">
+        <h2>➕ Add Expense</h2>
+
+        <div class="space-y-4">
+          <div class="form-group">
+            <label>Expense Name</label>
+            <input type="text" id="expenseName" placeholder="e.g., Grocery run, Taxi, Netflix…" />
+          </div>
+
+          <div class="form-group">
+            <label>Amount (PKR)</label>
+            <input type="number" id="expenseAmount" placeholder="0.00" min="0" step="0.01" />
+          </div>
+
+          <div class="form-group">
+            <label>Category</label>
+            <select id="expenseCategory">
+              <option value="food">🍔 Food & Dining</option>
+              <option value="trans">🚕 Transport</option>
+              <option value="shop">🛍️ Shopping</option>
+              <option value="health">💊 Health</option>
+              <option value="entert">🎬 Entertainment</option>
+              <option value="bill">💡 Bills & Utilities</option>
+              <option value="other">📦 Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Note (optional)</label>
+            <input type="text" id="expenseNote" placeholder="Any extra details…" />
+          </div>
+
+          <button class="btn-add" onclick="addExpense()">
+            <span>+</span> Add to List
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Tips -->
+      <div style="background:var(--ink);border-radius:12px;padding:1.25rem;color:var(--cream);border:1px solid #2c2c50;">
+        <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold-light);margin-bottom:0.75rem;">💡 Quick Tips</div>
+        <ul style="font-size:0.8rem;color:#b0a898;line-height:1.8;list-style:none;padding:0;">
+          <li>• Press <kbd style="background:#2c2c50;padding:0.1rem 0.4rem;border-radius:4px;font-size:0.7rem;">Enter</kbd> to add quickly</li>
+          <li>• Click ✕ to remove any entry</li>
+          <li>• Filter by category above the list</li>
+          <li>• Budget limit is set at PKR 50,000</li>
+          <li>• Stats update in real-time</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Expense List (3 cols) -->
+    <div class="md:col-span-3 flex flex-col">
+      <div class="list-panel flex flex-col flex-1">
+        <div class="list-header">
+          <h2>📋 Expense Log</h2>
+          <span class="count-badge" id="entryCount">0 entries</span>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter(this,'all')">All</button>
+          <button class="filter-btn" data-filter="food" onclick="setFilter(this,'food')">🍔 Food</button>
+          <button class="filter-btn" data-filter="trans" onclick="setFilter(this,'trans')">🚕 Transport</button>
+          <button class="filter-btn" data-filter="shop" onclick="setFilter(this,'shop')">🛍️ Shopping</button>
+          <button class="filter-btn" data-filter="health" onclick="setFilter(this,'health')">💊 Health</button>
+          <button class="filter-btn" data-filter="entert" onclick="setFilter(this,'entert')">🎬 Entertain</button>
+          <button class="filter-btn" data-filter="bill" onclick="setFilter(this,'bill')">💡 Bills</button>
+          <button class="filter-btn" data-filter="other" onclick="setFilter(this,'other')">📦 Other</button>
+        </div>
+
+        <!-- List -->
+        <div class="expense-list-scroll flex-1" id="expenseList">
+          <div class="empty-state" id="emptyState">
+            <div class="icon">🧾</div>
+            <p>No expenses yet.<br>Add your first entry above!</p>
+          </div>
+        </div>
+
+        <!-- Total Bar -->
+        <div class="total-bar">
+          <div>
+            <div class="total-label">Grand Total</div>
+            <div style="font-size:0.75rem;color:#6b6358;margin-top:0.15rem;" id="totalEntryLabel">0 entries</div>
+          </div>
+          <div class="total-amount" id="grandTotal">PKR 0.00</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;font-size:0.75rem;color:#b0a898;padding-bottom:1rem;">
+    ExpenseFlow &mdash; Built with ❤️ &nbsp;|&nbsp; All data is local to your session
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast">✔ Expense added!</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────
+  const BUDGET = 50000;
+  let expenses = [];
+  let currentFilter = 'all';
+  let nextId = 1;
+
+  const catMeta = {
+    food:   { icon: '🍔', cls: 'cat-food',   label: 'Food & Dining' },
+    trans:  { icon: '🚕', cls: 'cat-trans',  label: 'Transport' },
+    shop:   { icon: '🛍️', cls: 'cat-shop',   label: 'Shopping' },
+    health: { icon: '💊', cls: 'cat-health', label: 'Health' },
+    entert: { icon: '🎬', cls: 'cat-entert', label: 'Entertainment' },
+    bill:   { icon: '💡', cls: 'cat-bill',   label: 'Bills & Utilities' },
+    other:  { icon: '📦', cls: 'cat-other',  label: 'Other' },
+  };
+
+  // ── Helpers ────────────────────────────────────────────────
+  const fmt = n => 'PKR ' + Number(n).toLocaleString('en-PK', { minimumFractionDigits: 2 });
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── Add Expense ────────────────────────────────────────────
+  function addExpense() {
+    const name   = document.getElementById('expenseName').value.trim();
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    const cat    = document.getElementById('expenseCategory').value;
+    const note   = document.getElementById('expenseNote').value.trim();
+
+    if (!name) { alert('Please enter an expense name.'); return; }
+    if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount.'); return; }
+
+    expenses.push({ id: nextId++, name, amount, cat, note, time: new Date() });
+
+    document.getElementById('expenseName').value  = '';
+    document.getElementById('expenseAmount').value = '';
+    document.getElementById('expenseNote').value  = '';
+    document.getElementById('expenseName').focus();
+
+    render();
+    showToast('✔ "' + name + '" added!');
+  }
+
+  // ── Delete Expense ─────────────────────────────────────────
+  function deleteExpense(id) {
+    expenses = expenses.filter(e => e.id !== id);
+    render();
+    showToast('🗑 Expense removed');
+  }
+
+  // ── Filter ─────────────────────────────────────────────────
+  function setFilter(btn, filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+
+  // ── Render ─────────────────────────────────────────────────
+  function render() {
+    const filtered = currentFilter === 'all' ? expenses : expenses.filter(e => e.cat === currentFilter);
+    const total    = filtered.reduce((s, e) => s + e.amount, 0);
+    const grandAll = expenses.reduce((s, e) => s + e.amount, 0);
+    const avg      = expenses.length ? grandAll / expenses.length : 0;
+    const highest  = expenses.length ? Math.max(...expenses.map(e => e.amount)) : 0;
+
+    // Summary cards
+    document.getElementById('summaryTotal').textContent   = fmt(grandAll);
+    document.getElementById('summaryCount').textContent   = expenses.length;
+    document.getElementById('summaryAvg').textContent     = fmt(avg);
+    document.getElementById('summaryHighest').textContent = fmt(highest);
+
+    // Budget bar
+    const pct = Math.min((grandAll / BUDGET) * 100, 100);
+    document.getElementById('budgetFill').style.width = pct + '%';
+    document.getElementById('budgetUsed').textContent  = fmt(grandAll) + ' used';
+
+    // Grand total & count
+    document.getElementById('grandTotal').textContent    = fmt(total);
+    document.getElementById('entryCount').textContent    = filtered.length + ' entr' + (filtered.length === 1 ? 'y' : 'ies');
+    document.getElementById('totalEntryLabel').textContent = filtered.length + ' entr' + (filtered.length === 1 ? 'y' : 'ies');
+
+    // List
+    const list = document.getElementById('expenseList');
+    const empty = document.getElementById('emptyState');
+
+    // Remove old items (keep empty state element)
+    list.querySelectorAll('.expense-item').forEach(el => el.remove());
+
+    if (filtered.length === 0) {
+      empty.style.display = '';
+    } else {
+      empty.style.display = 'none';
+      [...filtered].reverse().forEach(e => {
+        const meta = catMeta[e.cat];
+        const timeStr = e.time.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = e.time.toLocaleDateString('en-PK', { month: 'short', day: 'numeric' });
+
+        const row = document.createElement('div');
+        row.className = 'expense-item';
+        row.innerHTML = `
+          <div class="category-icon ${meta.cls}">${meta.icon}</div>
+          <div>
+            <div class="expense-name">${escHtml(e.name)}</div>
+            <div class="expense-meta">${meta.label}${e.note ? ' · ' + escHtml(e.note) : ''} &nbsp;·&nbsp; ${dateStr}, ${timeStr}</div>
+          </div>
+          <div class="expense-amount">${fmt(e.amount)}</div>
+          <button class="btn-delete" title="Remove" onclick="deleteExpense(${e.id})">✕</button>
+        `;
+        list.insertBefore(row, empty);
+      });
+    }
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Keyboard shortcut (Enter) ──────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.activeElement.closest('.input-panel')) addExpense();
+  });
+
+  // ── Date display ───────────────────────────────────────────
+  (function() {
+    const d = new Date();
+    document.getElementById('currentDate').textContent =
+      d.toLocaleDateString('en-PK', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  })();
+
+  // Initial render
+  render();
+</script>
+</body>
+</html>

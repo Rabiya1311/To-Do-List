@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Expense Pro Dashboard</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+body { font-family: 'Inter', sans-serif; }
+.active { color:#a855f7; font-weight:600; }
+html { scroll-behavior: smooth; }
+</style>
+</head>
+
+<body class="bg-slate-900 text-white min-h-screen flex">
+
+<!-- SIDEBAR -->
+<div class="w-64 bg-slate-950 p-6 space-y-6">
+  <h1 class="text-2xl font-bold text-purple-400">
+    <i class="fa-solid fa-wallet"></i> FinTrack
+  </h1>
+
+  <nav class="space-y-4">
+    <p onclick="showSection('dashboard')" id="nav-dashboard" class="cursor-pointer active">
+      <i class="fa-solid fa-house mr-2"></i>Dashboard
+    </p>
+
+    <p onclick="goToAnalytics()" id="nav-analytics" class="cursor-pointer">
+      <i class="fa-solid fa-chart-pie mr-2"></i>Analytics
+    </p>
+
+    <p onclick="openSettings()" id="nav-settings" class="cursor-pointer">
+      <i class="fa-solid fa-gear mr-2"></i>Settings
+    </p>
+  </nav>
+</div>
+
+<!-- MAIN -->
+<div class="flex-1 flex flex-col">
+
+<!-- HEADER -->
+<div class="bg-white/5 p-4 border-b border-white/10 flex justify-between">
+  <h2 class="text-xl font-semibold">Expense Dashboard</h2>
+  <span class="text-gray-400 text-sm">Welcome 👋</span>
+</div>
+
+<!-- CONTENT -->
+<div class="p-6 flex-1">
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+<div class="grid md:grid-cols-3 gap-6">
+
+<!-- LEFT -->
+<div class="space-y-6">
+
+<div class="bg-white/5 p-5 rounded-xl space-y-3">
+  <input id="name" placeholder="Expense name" class="w-full p-3 bg-white/10 rounded-xl">
+  <input id="amount" type="number" placeholder="Amount" class="w-full p-3 bg-white/10 rounded-xl">
+
+  <!-- CLEAN SELECT -->
+  <div class="relative">
+    <select id="category"
+      class="w-full p-3 pr-10 bg-slate-800 border border-slate-700 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500">
+      <option value="Food">Food</option>
+      <option value="Travel">Travel</option>
+      <option value="Shopping">Shopping</option>
+      <option value="Bills">Bills</option>
+    </select>
+    <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+      <i class="fa-solid fa-chevron-down text-sm"></i>
+    </div>
+  </div>
+
+  <button onclick="addExpense()" class="w-full bg-purple-500 py-3 rounded-xl hover:bg-purple-600">
+    <i class="fa-solid fa-plus"></i> Add Expense
+  </button>
+</div>
+
+<div class="bg-white/5 p-5 rounded-xl">
+  <h3 class="text-gray-400">Total Spending</h3>
+  <p id="total" class="text-3xl font-bold text-green-400">Rs. 0</p>
+</div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="md:col-span-2 space-y-6">
+
+<div class="bg-white/5 p-5 rounded-xl">
+  <h3 class="mb-3">Expenses</h3>
+  <div id="list" class="space-y-3 max-h-52 overflow-y-auto"></div>
+</div>
+
+<div id="analyticsSection" class="bg-white/5 p-5 rounded-xl grid md:grid-cols-2 gap-6 items-center">
+  <div class="h-48">
+    <canvas id="chart"></canvas>
+  </div>
+  <div id="legend" class="space-y-4 text-sm"></div>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="hidden">
+  <div class="bg-white/5 p-5 rounded-xl max-w-md">
+    <h3 class="mb-4 text-lg">Customize Category Colors</h3>
+    <div id="colorSettings" class="space-y-3"></div>
+  </div>
+</div>
+
+</div>
+
+<div class="text-center text-gray-500 text-sm p-3 border-t border-white/10">
+  Expense Tracker © 2026
+</div>
+
+</div>
+
+<script>
+let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+
+let categoryColors = JSON.parse(localStorage.getItem("colors")) || {
+  Food:"#facc15",
+  Travel:"#60a5fa",
+  Shopping:"#f472b6",
+  Bills:"#4ade80"
+};
+
+function setActive(id){
+  document.querySelectorAll("nav p").forEach(el=>el.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function showSection(section){
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("settings").classList.add("hidden");
+
+  if(section==="dashboard"){
+    document.getElementById("dashboard").classList.remove("hidden");
+    setActive("nav-dashboard");
+  }
+
+  if(section==="settings"){
+    document.getElementById("settings").classList.remove("hidden");
+    setActive("nav-settings");
+    renderSettings();
+  }
+}
+
+function goToAnalytics(){
+  showSection("dashboard");
+  document.getElementById("analyticsSection").scrollIntoView({behavior:"smooth"});
+  setActive("nav-analytics");
+}
+
+function openSettings(){
+  showSection("settings");
+  document.getElementById("settings").scrollIntoView({behavior:"smooth"});
+}
+
+function addExpense(){
+  const name=document.getElementById("name").value.trim();
+  const amount=parseFloat(document.getElementById("amount").value);
+  const category=document.getElementById("category").value;
+
+  if(!name || isNaN(amount)) return alert("Enter valid data");
+
+  expenses.push({name,amount,category});
+  localStorage.setItem("expenses",JSON.stringify(expenses));
+  render();
+}
+
+function deleteExpense(index){
+  expenses.splice(index,1);
+  localStorage.setItem("expenses",JSON.stringify(expenses));
+  render();
+}
+
+function render(){
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  let total=0;
+
+  let data={Food:0,Travel:0,Shopping:0,Bills:0};
+
+  expenses.forEach((e,i)=>{
+    total+=e.amount;
+    data[e.category]+=e.amount;
+
+    const item=document.createElement("div");
+    item.className="flex justify-between items-center bg-white/10 p-3 rounded-xl";
+
+    const left=document.createElement("span");
+    left.innerText=`${e.name} (${e.category})`;
+
+    const right=document.createElement("div");
+    right.className="flex items-center gap-3";
+
+    const amount=document.createElement("span");
+    amount.innerText="Rs. "+e.amount;
+
+    const btn=document.createElement("button");
+    btn.innerHTML=`<i class="fa-solid fa-trash"></i>`;
+    btn.className="text-red-400 hover:text-red-600 transition";
+
+    btn.addEventListener("click",()=>deleteExpense(i));
+
+    right.appendChild(amount);
+    right.appendChild(btn);
+
+    item.appendChild(left);
+    item.appendChild(right);
+
+    list.appendChild(item);
+  });
+
+  document.getElementById("total").innerText="Rs. "+total;
+  renderChart(data);
+  renderLegend(data);
+}
+
+function renderLegend(data){
+  const legend=document.getElementById("legend");
+  legend.innerHTML="";
+
+  Object.keys(data).forEach(cat=>{
+    const row=document.createElement("div");
+    row.className="flex justify-between items-center bg-white/10 p-2 rounded-lg";
+
+    row.innerHTML=`
+      <div class="flex items-center gap-2">
+        <div style="background:${categoryColors[cat]}" class="w-3 h-3 rounded-full"></div>
+        <span>${cat}</span>
+      </div>
+      <span class="text-gray-300">Rs. ${data[cat]}</span>
+    `;
+
+    legend.appendChild(row);
+  });
+}
+
+let chart;
+
+function renderChart(data){
+  const ctx=document.getElementById("chart");
+
+  if(chart) chart.destroy();
+
+  chart=new Chart(ctx,{
+    type:"doughnut",
+    data:{
+      labels:Object.keys(data),
+      datasets:[{
+        data:Object.values(data),
+        backgroundColor:Object.values(categoryColors)
+      }]
+    },
+    options:{plugins:{legend:{display:false}}}
+  });
+}
+
+function renderSettings(){
+  const box=document.getElementById("colorSettings");
+  box.innerHTML="";
+
+  Object.keys(categoryColors).forEach(cat=>{
+    const row=document.createElement("div");
+    row.className="flex justify-between items-center";
+
+    row.innerHTML=`
+      <span>${cat}</span>
+      <input type="color" value="${categoryColors[cat]}"
+      onchange="updateColor('${cat}',this.value)">
+    `;
+
+    box.appendChild(row);
+  });
+}
+
+function updateColor(cat,color){
+  categoryColors[cat]=color;
+  localStorage.setItem("colors",JSON.stringify(categoryColors));
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>
